@@ -3,7 +3,8 @@ import requests
 from dingtalkchatbot.chatbot import DingtalkChatbot
 import openpyxl
 from datetime import datetime,  timedelta
-
+import schedule
+import time
 
 def write_to_excel(remaining_amount):
     """将剩余电量和查询时间写入 Excel 表格"""
@@ -217,7 +218,7 @@ def send_notification(remaining_amount, yesterday_usage, increased_amount):
             text += f"💰️有人充电费啦！电费余额增加了 {increased_amount} 元！\n"
         #正常的报告信息
         text += f"目前剩余电费 {remaining_amount} 元,\n"
-        text += f"昨天使用电费 {yesterday_usage} 元。"
+        text += f"昨日电费变化 {yesterday_usage} 元。"
         xiaoding.send_text(text)
 
 
@@ -229,7 +230,7 @@ def main():
         print("剩余电费:", remaining_amount)
         #读取是否存在昨日电费
         yesterday_usage = get_yesterday_electricity_usage(remaining_amount)
-        print("昨日消耗电费:", yesterday_usage)
+        print("昨日电费变化:", yesterday_usage)
         #读取是否有人充钱
         increased_amount = check_ifSomebodyPay(remaining_amount)
         #如果数据更新，再发送通知
@@ -239,6 +240,11 @@ def main():
             send_notification(remaining_amount, yesterday_usage, increased_amount)
     print("电费检查程序结束")
 
+def hourly_job():
+    print("开始执行定时电量检查任务...")
+    main()
+
+
 if __name__ == "__main__":
     limit = 20  # 欠费预警阈值
     room = '3S527'  # 房间号
@@ -247,3 +253,11 @@ if __name__ == "__main__":
     webhook = 'https://oapi.dingtalk.com/robot/send?access_token=2e1a8e3bf5c77c5d3e341b63494239d537c8a18dc76653f1231bd52dec4bcfb9'
     secret = 'SEC8834a56af271fb0246db77347726811e3aa13080b888db6c44204db7ab8c0f93'
     main()
+
+    # 每小时执行一次
+    schedule.every().hour.do(hourly_job)
+    # 无限循环以保持程序运行
+    while True:
+        schedule.run_pending()
+        time.sleep(1)
+
