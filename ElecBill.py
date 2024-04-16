@@ -119,8 +119,9 @@ def check_ifSomebodyPay(remaining_amount):
 
         #读取上一条电费记录
         record_amount = sheet.cell(row=sheet.max_row - 1, column=1).value
-        record_time = sheet.cell(row=sheet.max_row - 1, column=2).value
-        print(record_amount,record_time)
+        #检查时间
+        record_time = sheet.cell(row=sheet.max_row, column=2).value
+        print(record_time)
         # 如果钱变多了
         if (float(remaining_amount) > float(record_amount)):
             # 计算昨日使用电量
@@ -197,12 +198,14 @@ def parse_electricity_bill(bill):
     remaining_amount = data['query_elec_roominfo']['errmsg'].split('剩余金额:')[1]
     return float(remaining_amount)
 
-def send_notification(remaining_amount, yesterday_usage, increased_amount):
+def send_notification(remaining_amount, yesterday_usage, increased_amount, hours24_usage):
     """发送电费通知"""
     #仅返回两位小数
     remaining_amount = round(remaining_amount, 2)
     yesterday_usage = round(yesterday_usage, 2)
+    yesterday_usage = -yesterday_usage
     increased_amount = round(increased_amount, 2)
+    hours24_usage = round(hours24_usage, 2)
 
     xiaoding = DingtalkChatbot(webhook, secret=secret)
     text = ""
@@ -218,7 +221,8 @@ def send_notification(remaining_amount, yesterday_usage, increased_amount):
             text += f"💰️有人充电费啦！电费余额增加了 {increased_amount} 元！\n"
         #正常的报告信息
         text += f"目前剩余电费 {remaining_amount} 元,\n"
-        text += f"昨日电费变化 {yesterday_usage} 元。"
+        text += f"昨日电费变化 {yesterday_usage} 元\n"
+        text += f"24小时电费变化 {hours24_usage} 元。"
         xiaoding.send_text(text)
 
 
@@ -230,15 +234,18 @@ def main():
         print("剩余电费:", remaining_amount)
         #读取是否存在昨日电费
         yesterday_usage = get_yesterday_electricity_usage(remaining_amount)
-        print("昨日电费变化:", yesterday_usage)
+        print("昨日电费变化:-", yesterday_usage)
+        hours24_usage = get_past24hours_electricity_usage(remaining_amount)
         #读取是否有人充钱
         increased_amount = check_ifSomebodyPay(remaining_amount)
         #如果数据更新，再发送通知
         if check_ifUsageChange(remaining_amount):
             # 写入本地表格
             write_to_excel(remaining_amount)
-            send_notification(remaining_amount, yesterday_usage, increased_amount)
-    print("电费检查程序结束")
+            send_notification(remaining_amount, yesterday_usage, increased_amount, hours24_usage)
+        # write_to_excel(remaining_amount)
+        # send_notification(remaining_amount, yesterday_usage, increased_amount, hours24_usage)
+    print("电费检查程序结束，下一个任务在一小时后...")
 
 def hourly_job():
     print("开始执行定时电量检查任务...")
