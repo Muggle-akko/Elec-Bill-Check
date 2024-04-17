@@ -71,6 +71,42 @@ def get_yesterday_electricity_usage(remaining_amount):
     except FileNotFoundError:
         return "未找到电费记录文件"
 
+def get_useful_electricity_usage(remaining_amount):
+    """获取当前电量与昨天最后一条电量的差值，用以估计本日用量"""
+    try:
+        # 打开 Excel 文件
+        wb = openpyxl.load_workbook('electricity_records.xlsx')
+        sheet = wb['电费记录']
+
+        # 从最后一条往上遍历每一条数据
+        for row in range(sheet.max_row, 1, -1):
+            # 获取时间和电量
+            record_time = sheet.cell(row=row, column=2).value
+            record_amount = sheet.cell(row=row, column=1).value
+            yesterday_last_amount = 0
+
+            # 如果 record_time 是字符串类型，转换为 datetime 类型
+            if isinstance(record_time, str):
+                record_time = datetime.strptime(record_time, "%Y-%m-%d %H:%M:%S")
+
+            # 如果记录的日期是昨天，则将其添加到列表中
+            if record_time.date() == datetime.now().date() - timedelta(days=1):
+                yesterday_last_amount = record_amount
+
+            # 如果找到了昨天的最后一条记录，则计算差值电量并退出循环
+            if yesterday_last_amount != remaining_amount and yesterday_last_amount != 0:
+                useful_usage = remaining_amount - yesterday_last_amount
+                return useful_usage
+
+            #如果找到了昨天之前的记录，说明没有昨天的记录退出循环
+            if record_time.date() < datetime.now().date():
+                # 如果未找到符合条件的记录，则返回未找到昨日电费数据
+                return "未找到昨日电费数据"
+        return "未找到昨日电费数据"
+
+    except FileNotFoundError:
+        return "未找到电费记录文件"
+
 def get_past24hours_electricity_usage(remaining_amount):
     """获取过去24小时内使用的电量并计算消耗电费"""
     try:
@@ -195,15 +231,14 @@ def parse_electricity_bill(bill):
     remaining_amount = data['query_elec_roominfo']['errmsg'].split('剩余金额:')[1]
     return float(remaining_amount)
 
-def send_notification(remaining_amount, yesterday_usage, increased_amount, hours24_usage):
+def send_notification(remaining_amount, yesterday_usage, increased_amount, useful_usage):
     """发送电费通知"""
     #仅返回两位小数
     remaining_amount = round(remaining_amount, 2)
     yesterday_usage = round(yesterday_usage, 2)
     yesterday_usage = -yesterday_usage
     increased_amount = round(increased_amount, 2)
-    hours24_usage = round(hours24_usage, 2)
-    hours24_usage = -hours24_usage
+    useful_usage = round(useful_usage, 2)
 
     xiaoding = DingtalkChatbot(webhook, secret=secret)
     text = ""
@@ -220,7 +255,7 @@ def send_notification(remaining_amount, yesterday_usage, increased_amount, hours
         #正常的报告信息
         text += f"目前剩余电费 {remaining_amount} 元,\n"
         text += f"昨日电费变化 {yesterday_usage} 元\n"
-        text += f"24小时电费变化 {hours24_usage} 元。"
+        text += f"当前电费较昨日电费变化 {useful_usage} 元。"
         xiaoding.send_text(text)
 
 
@@ -233,15 +268,15 @@ def main():
         #读取是否存在昨日电费
         yesterday_usage = get_yesterday_electricity_usage(remaining_amount)
         print("昨日电费变化:-", yesterday_usage)
-        hours24_usage = get_past24hours_electricity_usage(remaining_amount)
-        print("24小时电费变化:-", hours24_usage)
+        useful_usage = get_useful_electricity_usage(remaining_amount)
+        print("当前电费较昨日电费变化:-", useful_usage)
         #读取是否有人充钱
         increased_amount = check_ifSomebodyPay(remaining_amount)
         #如果数据更新，再发送通知
         if check_ifUsageChange(remaining_amount):
             # 写入本地表格
             write_to_excel(remaining_amount)
-            send_notification(remaining_amount, yesterday_usage, increased_amount, hours24_usage)
+            send_notification(remaining_amount, yesterday_usage, increased_amount, useful_usage)
         # write_to_excel(remaining_amount)
         # send_notification(remaining_amount, yesterday_usage, increased_amount, hours24_usage)
     print("电费检查程序结束，下一个任务在一小时后...")
