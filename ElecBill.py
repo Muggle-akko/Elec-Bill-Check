@@ -255,7 +255,7 @@ def send_notification(remaining_amount, yesterday_usage, increased_amount, usefu
         #正常的报告信息
         text += f"目前剩余电费 {remaining_amount} 元,\n"
         text += f"昨日电费变化 {yesterday_usage} 元\n"
-        text += f"当前电费较昨日电费变化 {useful_usage} 元。"
+        text += f"当前电费较昨日变化 {useful_usage} 元。"
         xiaoding.send_text(text)
 
 
@@ -284,6 +284,11 @@ def main():
 def hourly_job():
     print("开始执行定时电量检查任务...")
     main()
+    # 晚上11点断网前强制执行定时任务
+    current_time = datetime.datetime.now()
+    if current_time.hour == 23:
+        print("当前时间是晚上11点，强制执行定时任务...")
+        main()
 
 
 if __name__ == "__main__":
