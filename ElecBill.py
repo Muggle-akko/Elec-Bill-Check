@@ -41,7 +41,7 @@ def get_yesterday_electricity_usage(remaining_amount):
 
         yesterday_records = []
 
-        # 遍历每一条数据
+        # 从最后一条往上遍历每一条数据
         for row in range(sheet.max_row, 1, -1):
             # 获取时间和电量
             record_time = sheet.cell(row=row, column=2).value
@@ -55,18 +55,15 @@ def get_yesterday_electricity_usage(remaining_amount):
             if record_time.date() == datetime.now().date() - timedelta(days=1):
                 yesterday_records.append(record_amount)
 
-            # 如果找到了昨天的第一条记录和最后一条记录，则退出循环
-            if len(yesterday_records) == 2:
-                break
+            # 如果找到了昨天的第一条记录（发现日期早于前天），则计算昨日使用电量并退出循环
+            if record_time.date() < datetime.now().date() - timedelta(days=1):
+                if len(yesterday_records) > 1: #并且存在昨天的两条记录
+                    yesterday_usage = yesterday_records[-1] - yesterday_records[0]
+                    return yesterday_usage
+                else:
+                    # 如果未找到符合条件的记录，则返回未找到昨日电费数据
+                    return "未找到昨日电费数据"
 
-        # 如果找到了昨天的第一条记录和最后一条记录，则计算昨日使用电量
-        if len(yesterday_records) == 2:
-            yesterday_usage = yesterday_records[1] - yesterday_records[0]
-            if (yesterday_usage != 0 and yesterday_usage != remaining_amount):
-                return yesterday_usage
-            else:
-                # 如果未找到符合条件的记录，则返回未找到昨日电费数据
-                return "未找到昨日电费数据"
         else:
             # 如果未找到符合条件的记录，则返回未找到昨日电费数据
             return "未找到昨日电费数据"
@@ -206,6 +203,7 @@ def send_notification(remaining_amount, yesterday_usage, increased_amount, hours
     yesterday_usage = -yesterday_usage
     increased_amount = round(increased_amount, 2)
     hours24_usage = round(hours24_usage, 2)
+    hours24_usage = -hours24_usage
 
     xiaoding = DingtalkChatbot(webhook, secret=secret)
     text = ""
@@ -236,6 +234,7 @@ def main():
         yesterday_usage = get_yesterday_electricity_usage(remaining_amount)
         print("昨日电费变化:-", yesterday_usage)
         hours24_usage = get_past24hours_electricity_usage(remaining_amount)
+        print("24小时电费变化:-", hours24_usage)
         #读取是否有人充钱
         increased_amount = check_ifSomebodyPay(remaining_amount)
         #如果数据更新，再发送通知
