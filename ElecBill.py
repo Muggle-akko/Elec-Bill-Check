@@ -260,10 +260,13 @@ def send_notification(remaining_amount, yesterday_usage, increased_amount, usefu
 
 
 def main():
-    """主函数"""
+    # """主函数"""
     bill = get_electricity_bill()
     if bill:
-        remaining_amount = parse_electricity_bill(bill)
+        try:
+            remaining_amount = parse_electricity_bill(bill)
+        except json.decoder.JSONDecodeError:
+            print("JSONDecodeError: 解析电费Json数据失败！")
         print("剩余电费:", remaining_amount)
         #读取是否存在昨日电费
         yesterday_usage = get_yesterday_electricity_usage(remaining_amount)
@@ -279,13 +282,15 @@ def main():
             send_notification(remaining_amount, yesterday_usage, increased_amount, useful_usage)
         # write_to_excel(remaining_amount)
         # send_notification(remaining_amount, yesterday_usage, increased_amount, hours24_usage)
+    else:
+        print("未查询到电费数据")
     print("电费检查程序结束，下一个任务在一小时后...")
 
 def hourly_job():
     print("开始执行定时电量检查任务...")
     main()
     # 晚上11点断网前强制执行定时任务
-    current_time = datetime.datetime.now()
+    current_time = datetime.now()
     if current_time.hour == 23:
         print("当前时间是晚上11点，强制执行定时任务...")
         main()
