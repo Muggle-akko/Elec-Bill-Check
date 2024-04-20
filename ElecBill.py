@@ -58,7 +58,7 @@ def get_yesterday_electricity_usage(remaining_amount):
             # 如果找到了昨天的第一条记录（发现日期早于前天），则计算昨日使用电量并退出循环
             if record_time.date() < datetime.now().date() - timedelta(days=1):
                 if len(yesterday_records) > 1: #并且存在昨天的两条记录
-                    yesterday_usage = yesterday_records[-1] - yesterday_records[0]
+                    yesterday_usage = record_amount - yesterday_records[0]
                     return yesterday_usage
                 else:
                     # 如果未找到符合条件的记录，则返回未找到昨日电费数据
