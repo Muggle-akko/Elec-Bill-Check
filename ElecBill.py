@@ -289,12 +289,13 @@ def main():
 def hourly_job():
     print("开始执行定时电量检查任务...")
     main()
+
+def check_job():
     # 晚上11点断网前强制执行定时任务
     current_time = datetime.now()
-    if current_time.hour == 23:
+    if current_time.hour == 23 and current_time.minute == 0:
         print("当前时间是晚上11点，强制执行定时任务...")
         main()
-
 
 if __name__ == "__main__":
     limit = 20  # 欠费预警阈值
@@ -307,6 +308,9 @@ if __name__ == "__main__":
 
     # 每小时执行一次
     schedule.every().hour.do(hourly_job)
+    # 检查是否是十一点，是的话执行一次
+    schedule.every().minute.do(check_job)
+
     # 无限循环以保持程序运行
     while True:
         schedule.run_pending()
