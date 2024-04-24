@@ -245,7 +245,11 @@ def send_notification(remaining_amount, yesterday_usage, increased_amount, usefu
 
     if remaining_amount < limit:
         #钱到达阈值
-        text += f"⚠️ {room} 宿舍用电即将欠费，请尽快充值"
+        text += f"⚠️ {room} 宿舍用电即将欠费，请尽快充值!\n"
+        # 正常的报告信息
+        text += f"目前剩余电费 {remaining_amount} 元,\n"
+        text += f"昨日电费变化 {yesterday_usage} 元\n"
+        text += f"当前电费较昨日变化 {useful_usage} 元。"
         xiaoding.send_text(text, is_at_all=True)
     else:
         text += f"🔋【电费】{room} \n"
